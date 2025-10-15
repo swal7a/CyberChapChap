@@ -39,38 +39,56 @@ export const MOCK_USERS = [
     },
 ];
 
-// FIX: Export a function to allow other parts of the app (like Settings) 
-// to update the mock database with new preferences and settings.
-export const saveUserDataToMockDB = (email, newData) => {
-    const userIndex = MOCK_USERS.findIndex(u => u.email === email);
-    if (userIndex !== -1) {
-        // Overwrite the user's data object with the new data (this includes all settings)
-        MOCK_USERS[userIndex].data = newData;
-        console.log(`Mock DB updated for user: ${email}. Security Score: ${newData.securityScore || 'N/A'}, Language: ${newData.language}`);
-    } else {
-        console.error(`User with email ${email} not found in MOCK_USERS for saving.`);
-    }
+// FIX: Helper function to read the persistent database from localStorage
+const getMockDatabase = () => {
+    // Retrieve the JSON string from localStorage and parse it. Default to an empty object.
+    const mockDB = localStorage.getItem('mockUserDB');
+    return mockDB ? JSON.parse(mockDB) : {};
 };
 
-// --- FIX: ADDED FUNCTION TO RESOLVE THE MISSING EXPORT ERROR (REQUIRED BY Settings.jsx) ---
-/**
- * Removes a user entry from the MOCK_USERS array.
- * @param {string} emailToRemove The email of the user to remove.
- */
-export const removeUserFromMockDB = (emailToRemove) => {
-    const initialLength = MOCK_USERS.length;
-    // Find the index of the user to remove
-    const userIndex = MOCK_USERS.findIndex(u => u.email === emailToRemove);
+// FIX: Export a function to allow other parts of the app (like Settings) 
+// to update the mock database with new preferences and settings.
+// NOTE: THIS FUNCTION IS NOW OUTDATED as login/signup use localStorage.
+// You should consider removing MOCK_USERS and saveUserDataToMockDB entirely and only use the localStorage version,
+// but for now, we'll keep it to maintain previous logic.
+export const saveUserDataToMockDB = (email, newData) => {
+    // 1. Update the MOCK_USERS array (Legacy/Initial data structure)
+    const userIndex = MOCK_USERS.findIndex(u => u.email === email);
+    if (userIndex !== -1) {
+        MOCK_USERS[userIndex].data = newData;
+    }
 
-    if (userIndex !== -1) {
-        // Remove the user from the array
-        MOCK_USERS.splice(userIndex, 1);
-        console.log(`User ${emailToRemove} successfully removed from MOCK_USERS. New count: ${MOCK_USERS.length}`);
-        return true;
-    } else {
-        console.warn(`User ${emailToRemove} not found in MOCK_USERS for removal.`);
-        return false;
-    }
+    // 2. Update the PERSISTENT DATABASE (The actual fix for settings persistence)
+    const mockDB = getMockDatabase();
+    mockDB[email] = newData; // Use the email as the key
+    localStorage.setItem('mockUserDB', JSON.stringify(mockDB));
+    
+    console.log(`Persistent Mock DB updated for user: ${email}.`);
+};
+
+// --- FIX: UPDATED removeUserFromMockDB TO TARGET PERSISTENT DB ---
+/**
+ * Removes a user entry from the MOCK_USERS array AND the persistent mockUserDB.
+ * @param {string} emailToRemove The email of the user to remove.
+ */
+export const removeUserFromMockDB = (emailToRemove) => {
+    // 1. Remove from static MOCK_USERS (for the current session)
+    const userIndex = MOCK_USERS.findIndex(u => u.email === emailToRemove);
+    if (userIndex !== -1) {
+        MOCK_USERS.splice(userIndex, 1);
+    }
+
+    // 2. Remove from the PERSISTENT DATABASE (This is the critical step for permanent deletion)
+    const mockDB = getMockDatabase();
+    if (mockDB[emailToRemove]) {
+        delete mockDB[emailToRemove];
+        localStorage.setItem('mockUserDB', JSON.stringify(mockDB));
+        console.log(`User ${emailToRemove} successfully removed from persistent DB and MOCK_USERS.`);
+        return true;
+    } else {
+        console.warn(`User ${emailToRemove} not found in persistent DB for removal. Only removed from MOCK_USERS array.`);
+        return false;
+    }
 };
 // -----------------------------------------------------------------------------------------
 
@@ -135,12 +153,15 @@ export default function SignupPage({ onLogin }) {
     }
 
     // 2. Duplication Check (Prevents signing up existing users)
-    const isExistingUser = MOCK_USERS.some(u => u.email === email);
+    // --- FIX: CHECK THE PERSISTENT DATABASE, NOT JUST THE STATIC MOCK_USERS ARRAY ---
+    const mockDB = getMockDatabase();
+    const isExistingUser = !!mockDB[email]; // Check if the email key exists in the persistent map
 
     if (isExistingUser) {
       alert('An account with this email already exists. Please log in.');
       return;
     }
+    // --- END FIX ---
 
     console.log('Registering new user:', name);
 
@@ -153,9 +174,13 @@ export default function SignupPage({ onLogin }) {
           email: email,
       };
 
-      // FIX: Store the new user's credentials and their full data object in the mock DB
+      // 4. Store the new user's credentials and their full data object in the mock DB
+      // We push to MOCK_USERS for consistency during the current session
       MOCK_USERS.push({ email, password, data: newUserData }); 
       
+      // We MUST also save to the persistent database so subsequent logins/signups see them
+      saveUserDataToMockDB(email, newUserData);
+
       onLogin(); // Set app's global auth state
       
       // FIX: Load the complete initial data for the new user into context

@@ -10,7 +10,16 @@ import { UserContext } from '../context/UserContext';
 // FIX: Import the MOCK_USERS array from the SignupPage
 import { MOCK_USERS } from './SignupPage'; 
 
-// --- PASSWORD STRENGTH HELPER ---
+// =======================================================
+// === MOCK DATABASE HELPER (ADDED FOR PERSISTENCE FIX) ===
+// =======================================================
+const getMockDatabase = () => {
+  // Retrieve the JSON string from localStorage and parse it. Default to an empty object.
+  const mockDB = localStorage.getItem('mockUserDB');
+  return mockDB ? JSON.parse(mockDB) : {};
+};
+
+// --- PASSWORD STRENGTH HELPER (Unchanged) ---
 const checkPasswordStrength = (password) => {
   let score = 0;
 // ... (rest of checkPasswordStrength function is unchanged)
@@ -44,27 +53,40 @@ export default function LoginPage({ onLogin }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // 1. Find the user (Uses the shared MOCK_USERS array)
-    const user = MOCK_USERS.find(
+    // Get the persistent mock database for login verification
+    const mockDB = getMockDatabase();
+
+    // 1. Find the user credentials (We check the MOCK_USERS array for the password)
+    const userCredentials = MOCK_USERS.find(
       // Check for email and password
       (u) => u.email === email && u.password === password
     );
     
-    // 2. Real Login Check
-    if (!user) {
+    // 2. Check if the user exists in the persistent database
+    const persistentUserData = mockDB[email];
+
+    // 3. Real Login Check: User must exist in initial MOCK_USERS (for password check) AND the persistent DB
+    if (!userCredentials || !persistentUserData) {
       alert('Login failed. Please check your email and password.');
       return;
     }
 
-    console.log('Login successful for:', user.email);
+    console.log('Login successful for:', email);
 
     // Simulate API call delay
     setTimeout(() => {
       onLogin();
-      // MAJOR FIX: Completely overwrite the UserContext data 
-      // with the user's unique data payload (user.data).
-      updateUserData(user.data); 
       
+      // ***************************************************************
+      // *** CRITICAL FIX: Load the persistent user data payload. ***
+      // ***************************************************************
+      // This ensures saved settings (like emailAlerts) are loaded.
+      updateUserData(persistentUserData); 
+      
+      // OPTIONAL: Manually set session token and data to ensure context hydration works immediately
+      localStorage.setItem('currentUserData', JSON.stringify(persistentUserData));
+      localStorage.setItem('token', 'fake-login-token');
+
       navigate('/dashboard');
     }, 500);
   };

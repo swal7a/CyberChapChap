@@ -10,7 +10,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 // =======================================================
-// === IN-FILE MOCK DATABASE LOGIC (Enhanced Persistence) ===
+// === IN-FILE MOCK DATABASE LOGIC (FIXED Persistence Keys) ===
 // =======================================================
 const getMockDatabase = () => {
   const mockDB = localStorage.getItem('mockUserDB');
@@ -22,9 +22,8 @@ const saveUserDataToMockDB = (email, userData) => {
   db[email] = userData;
   localStorage.setItem('mockUserDB', JSON.stringify(db));
   
-  // CRITICAL: This ensures the active session data is also updated immediately 
-  // and is what the UserContext likely reads from for hydration/persistence.
-  localStorage.setItem('userData', JSON.stringify(userData)); 
+  // CRITICAL FIX: Changed from 'userData' to 'currentUserData' to match UserContext.jsx
+  localStorage.setItem('currentUserData', JSON.stringify(userData)); 
 };
 
 const removeUserFromMockDB = (email) => {
@@ -33,7 +32,7 @@ const removeUserFromMockDB = (email) => {
     delete db[email];
     localStorage.setItem('mockUserDB', JSON.stringify(db));
   }
-  // The active session keys ('userData' and 'token') are cleared by safeRedirectToLogin later.
+  // The session keys will be cleared by safeRedirectToLogin/handleLogout
 };
 // =======================================================
 
@@ -97,6 +96,7 @@ const ProfileSettings = () => {
         <div>
           <Label htmlFor="email">Email Address</Label>
           <Input id="email" type="email" value={userData.email} disabled className="cursor-not-allowed bg-gray-100" />
+          {/* NOTE: Removed the redundant saving to 'userData' here as it's now handled by persistUserUpdate. */}
         </div>
         <Button type="submit" className="bg-[hsl(165,71%,60%)] hover:bg-[#003a8c]" disabled={loading}>
           {loading ? 'Saving...' : 'Save Changes'}
@@ -121,9 +121,9 @@ const SecuritySettings = ({ onLogout }) => {
     // Clear context
     try { clearUserData && clearUserData(); } catch (err) { console.warn('Context clear failed', err); }
     
-    // Clear session storage (userData and token)
+    // CRITICAL FIX: Clear the correct session storage key
     try {
-      localStorage.removeItem('userData');
+      localStorage.removeItem('currentUserData'); // <-- Changed from 'userData'
       localStorage.removeItem('token');
     } catch (err) {
       console.warn('localStorage cleanup issue', err);
@@ -174,14 +174,14 @@ const SecuritySettings = ({ onLogout }) => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // 1. PERMANENT DATA WIPE (MOCK DB): This is the key to preventing re-login.
+      // 1. PERMANENT DATA WIPE (MOCK DB)
       if (userData?.email) {
         removeUserFromMockDB(userData.email); 
       }
 
       setStatus({ type: 'success', message: 'Account deleted and data wiped. Redirecting to login...' });
 
-      // 2. Clear session and navigate (must be delayed to allow state update/message visibility)
+      // 2. Clear session and navigate 
       setTimeout(() => safeRedirectToLogin(true), 700);
     } catch (error) {
       console.error('Failed to delete account:', error);
@@ -226,7 +226,6 @@ const SecuritySettings = ({ onLogout }) => {
     </>
   );
 };
-
 
 
 // --- Notifications Section ---
@@ -280,7 +279,6 @@ const NotificationsSettings = () => {
 };
 
 
-
 // --- Language Section ---
 const LanguageSettings = () => {
   const { userData, updateUserData } = useContext(UserContext);
@@ -328,7 +326,7 @@ const LanguageSettings = () => {
 };
 
 
-// --- Support Section ---
+// --- Support Section (No changes) ---
 const SupportSection = () => {
   const faqs = [
     { question: "What is the purpose of Cyberchapchap?", answer: "Cyberchapchap is a security tool designed for small businesses to scan their digital assets and provide actionable recommendations to improve their cybersecurity posture." },
@@ -355,7 +353,7 @@ const SupportSection = () => {
                 <p className="text-sm text-gray-500 mt-1">{faq.answer}</p>
               </div>
             ))}
-          </div>
+           </div>
         </div>
         <div className="p-4 bg-gray-50 rounded-lg">
           <h3 className="text-lg font-medium">App Version</h3>
@@ -367,7 +365,6 @@ const SupportSection = () => {
 };
 
 
-
 // --- MAIN SETTINGS COMPONENT ---
 export default function Settings({ onLogout }) {
   const { userData, clearUserData } = useContext(UserContext);
@@ -377,7 +374,8 @@ export default function Settings({ onLogout }) {
   // Centralized logout for the sidebar button
   const handleLogout = useCallback(() => {
     try { clearUserData && clearUserData(); } catch (e) { console.warn(e); }
-    try { localStorage.removeItem('userData'); localStorage.removeItem('token'); } catch (e) { /* ignore */ }
+    // CRITICAL FIX: Clear the correct session storage key
+    try { localStorage.removeItem('currentUserData'); localStorage.removeItem('token'); } catch (e) { /* ignore */ }
     if (typeof onLogout === 'function') {
       try { onLogout(); } catch (err) { console.warn(err); }
     }
@@ -388,7 +386,7 @@ export default function Settings({ onLogout }) {
   if (userData === undefined) return null;
 
   // Redirect handler when context data is cleared
-  if (!userData) {
+  if (!userData || (userData.name === '' && localStorage.getItem('currentUserData') === null)) {
     setTimeout(() => navigate('/login', { replace: true }), 20);
 
     return (
