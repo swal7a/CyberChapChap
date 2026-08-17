@@ -1,16 +1,50 @@
-# React + Vite
+# CyberChapChap
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Cybersecurity awareness and automated vulnerability assessment platform, built for African SMEs.
 
-Currently, two official plugins are available:
+> ⚠️ **Status: In active development.** This project is not yet deployed and is still evolving — expect incomplete features and rough edges.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## About
 
-## React Compiler
+Many small and medium businesses in Africa lack the budget or technical expertise to understand their cybersecurity risk. CyberChapChap aims to close that gap by scanning for common vulnerabilities and translating the results into something a non-technical business owner can actually understand and act on.
 
-The React Compiler is not enabled on this template. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Core Idea
 
-## Expanding the ESLint configuration
+- Run a vulnerability scan against a business's web presence
+- Convert raw scan output into a simplified, gamified **Security Score**
+- Show risk on a regional dashboard, so SMEs can see how they compare to others nearby
+- Give plain-language, actionable recommendations instead of raw technical findings
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Tech Stack
+
+- **Frontend:** React + Vite, Tailwind CSS
+- **Backend:** Supabase (database, auth, backend-as-a-service)
+
+## Current Status
+
+This repo currently holds the initial project scaffold. Core features (scan integration, Security Score logic, dashboard UI) are under active development.
+
+## Roadmap
+
+- [ ] Vulnerability scan integration
+- [ ] Security Score calculation and gamified UX
+- [ ] Regional risk dashboard
+- [ ] AI-driven threat intelligence (pgvector)
+- [ ] Automated patching workflows
+- [ ] B2B managed security services
+- [ ] Mobile app
+
+## Demo
+
+A demo video showing the concept in action is available here: **[https://youtu.be/r3SRT882SqM?feature=shared]**
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+## Author
+
+Built by(https://github.com/swal7a).
